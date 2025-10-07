@@ -1,0 +1,44 @@
+# Byte-code files
+*.pyc
+__pycache__/
+
+# Virtual environment
+venv/
+env/
+.Python/
+.venv/
+*.egg-info/
+
+# Distribution / build files
+dist/
+build/
+*.egg
+*.whl
+
+# Editor files
+.vscode/
+.idea/
+*.iml
+.DS_Store
+
+# Logs
+*.log
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.flaskenv
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.nox/
+
+# PyInstaller
+*.spec
+
+# MyPy
+.mypy_cache/
