@@ -3,6 +3,7 @@
 import argparse
 import array
 import time
+import random
 
 # base class for pipeline
 class pipeline:
@@ -13,8 +14,12 @@ class pipeline:
         self.buffers_xferred = 0
         self.elapsed = 0
         self.recv_delay = recv_delay
+        self.buffer_list = []
 
-        self._buffer = array.array('B', bytes(self.buffer_size_bytes))
+        # create a list of buffers
+        for i in range(0, self.concurrency):
+            self.buffer_list.append(array.array('B',
+                                    bytes(self.buffer_size_bytes)))
 
     def run(self, duration_s: int):
         pass
@@ -36,14 +41,18 @@ class pipeline_sequential(pipeline):
         super().__init__(buffer_size_bytes=buffer_size_bytes,
                          concurrency=concurrency, recv_delay=recv_delay)
 
-    def _recv(self, buffer: array.array):
-        # don't do anything except wait for configurable time
+    def _recv(self):
+        # don't do anything except wait for configurable time to mimic a
+        # delay in receiving data
         time.sleep(self.recv_delay)
 
-    def _compute(self, buffer: array.array):
-        pass
+    def _compute(self, buffer_idx: int):
+        # fill the specified buffer with random data, byte by byte
+        for i in range(0, self.buffer_size_bytes):
+            random_byte_int = random.randint(0,255)
+            self.buffer_list[buffer_idx][i] = random_byte_int
 
-    def _write(self, buffer: array.array):
+    def _write(self, buffer_idx: int):
         pass
 
     def run(self, duration_s: int):
@@ -53,14 +62,14 @@ class pipeline_sequential(pipeline):
         while (time.perf_counter() - start_ts) < duration_s:
             # 3 steps per pipeline:
 
-            # recv data (fake)
-            self._recv(self._buffer)
+            # recv data
+            self._recv()
 
-            # compute (rnd generator)
-            self._compute(self._buffer)
+            # compute
+            self._compute(0)
 
-            # write (write and flush)
-            self._write(self._buffer)
+            # write and flush
+            self._write(0)
 
             # bookkeeping
             self.buffers_xferred += 1
