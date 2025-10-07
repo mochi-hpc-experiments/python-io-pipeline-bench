@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import array
+import time
 
 # base class for pipeline
 class pipeline:
@@ -8,7 +10,9 @@ class pipeline:
         self.buffer_size_bytes = buffer_size_bytes
         self.concurrency = concurrency
 
-    def run(self, duration_s: str):
+        self._buffer = array.array('B', bytes(self.buffer_size_bytes))
+
+    def run(self, duration_s: int):
         pass
 
 # sequential version of pipeline
@@ -20,6 +24,13 @@ class pipeline_sequential(pipeline):
 
         super().__init__(buffer_size_bytes=buffer_size_bytes,
                          concurrency=concurrency)
+
+    def run(self, duration_s: int):
+
+        start_ts = time.perf_counter()
+
+        while (time.perf_counter() - start_ts) < duration_s:
+            time.sleep(.1)
 
 def main():
     parser = argparse.ArgumentParser()
