@@ -4,22 +4,35 @@ import argparse
 import array
 import time
 import random
+import os
 
 # base class for pipeline
 class pipeline:
     def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
-                 float):
+                 float, output_file_base: str):
         self.buffer_size_bytes = buffer_size_bytes
         self.concurrency = concurrency
         self.buffers_xferred = 0
         self.elapsed = 0
         self.recv_delay = recv_delay
         self.buffer_list = []
+        self.file_ref_list = []
+        self.output_file_base = output_file_base
 
-        # create a list of buffers
+        # create a list of buffers, and also open a file for each one
         for i in range(0, self.concurrency):
+            filename = self.output_file_base + f".{i}"
             self.buffer_list.append(array.array('B',
                                     bytes(self.buffer_size_bytes)))
+            self.file_ref_list.append(open(filename, 'w'))
+
+    def close(self):
+        for i in range(0, self.concurrency):
+            self.file_ref_list[i].close()
+            filename = self.output_file_base + f".{i}"
+            os.unlink(filename)
+
+        self.buffer_list = []
 
     def run(self, duration_s: int):
         pass
@@ -33,13 +46,14 @@ class pipeline:
 # sequential version of pipeline
 class pipeline_sequential(pipeline):
     def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
-                 float):
+                 float, output_file_base: str):
 
         if concurrency != 1:
             raise ValueError(f"Invalid 'concurrency' value for pipeline_sequential. Expected 1, but got {concurrency}.")
 
         super().__init__(buffer_size_bytes=buffer_size_bytes,
-                         concurrency=concurrency, recv_delay=recv_delay)
+                         concurrency=concurrency, recv_delay=recv_delay,
+                         output_file_base=output_file_base)
 
     def _recv(self):
         # don't do anything except wait for configurable time to mimic a
@@ -88,18 +102,23 @@ def main():
                         help='Level of concurrency.')
     parser.add_argument('--recv-delay', type=float, required=True,
                         help='(float) seconds to sleep per emulated recv')
+    parser.add_argument('--output-file', type=str, required=True,
+                        help='base name of output file')
     args = parser.parse_args()
 
     if args.method == "sequential":
         my_pipeline = pipeline_sequential(buffer_size_bytes=
                                           (args.buffer_size*1024),
                                           concurrency=args.concurrency,
-                                          recv_delay=args.recv_delay);
+                                          recv_delay=args.recv_delay,
+                                          output_file_base=args.output_file);
     else:
         raise ValueError(f"Invalid method: {args.method}")
 
     my_pipeline.run(duration_s=args.duration)
     my_pipeline.report_timing()
+    # TODO: could refactor this to use a context manager I guess
+    my_pipeline.close()
 
 
 if __name__ == "__main__":
