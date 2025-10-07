@@ -9,11 +9,19 @@ class pipeline:
     def __init__(self, buffer_size_bytes: int, concurrency: int):
         self.buffer_size_bytes = buffer_size_bytes
         self.concurrency = concurrency
+        self.buffers_xferred = 0
+        self.elapsed = 0
 
         self._buffer = array.array('B', bytes(self.buffer_size_bytes))
 
     def run(self, duration_s: int):
         pass
+
+    def report_timing(self):
+
+        MiB = self.buffers_xferred * self.buffer_size_bytes/(1024*1024)
+        print(f"Transferred {MiB} MiB in {self.elapsed} seconds.")
+        print(f"{MiB/self.elapsed} MiB/s")
 
 # sequential version of pipeline
 class pipeline_sequential(pipeline):
@@ -30,7 +38,10 @@ class pipeline_sequential(pipeline):
         start_ts = time.perf_counter()
 
         while (time.perf_counter() - start_ts) < duration_s:
+            self.buffers_xferred += 1
             time.sleep(.1)
+
+        self.elapsed = time.perf_counter() - start_ts
 
 def main():
     parser = argparse.ArgumentParser()
@@ -52,6 +63,7 @@ def main():
         raise ValueError(f"Invalid method: {args.method}")
 
     my_pipeline.run(duration_s=args.duration)
+    my_pipeline.report_timing()
 
 
 if __name__ == "__main__":
