@@ -76,6 +76,7 @@ class pipeline_sequential(pipeline):
 
     def run(self, duration_s: int):
 
+        # no concurrency, we just step by step execute the steps in a loop
         start_ts = time.perf_counter()
 
         while (time.perf_counter() - start_ts) < duration_s:
