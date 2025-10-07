@@ -2,6 +2,25 @@
 
 import argparse
 
+# base class for pipeline
+class pipeline:
+    def __init__(self, buffer_size_bytes: int, concurrency: int):
+        self.buffer_size_bytes = buffer_size_bytes
+        self.concurrency = concurrency
+
+    def run(self, duration_s: str):
+        pass
+
+# sequential version of pipeline
+class pipeline_sequential(pipeline):
+    def __init__(self, buffer_size_bytes: int, concurrency: int):
+
+        if concurrency != 1:
+            raise ValueError(f"Invalid 'concurrency' value for pipeline_sequential. Expected 1, but got {concurrency}.")
+
+        super().__init__(buffer_size_bytes=buffer_size_bytes,
+                         concurrency=concurrency)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--method', type=str, required=True,
@@ -14,8 +33,15 @@ def main():
                         help='Level of concurrency.')
     args = parser.parse_args()
 
-    # Add your logic here
-    pass
+    if args.method == "sequential":
+        my_pipeline = pipeline_sequential(buffer_size_bytes=
+                                          (args.buffer_size*1024),
+                                          concurrency=args.concurrency);
+    else:
+        raise ValueError(f"Invalid method: {args.method}")
+
+    my_pipeline.run(duration_s=args.duration)
+
 
 if __name__ == "__main__":
     main()
