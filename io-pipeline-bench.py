@@ -24,7 +24,7 @@ class pipeline:
             filename = self.output_file_base + f".{i}"
             self.buffer_list.append(array.array('B',
                                     bytes(self.buffer_size_bytes)))
-            self.file_ref_list.append(open(filename, 'w'))
+            self.file_ref_list.append(open(filename, 'wb'))
 
     def close(self):
         for i in range(0, self.concurrency):
@@ -67,7 +67,12 @@ class pipeline_sequential(pipeline):
             self.buffer_list[buffer_idx][i] = random_byte_int
 
     def _write(self, buffer_idx: int):
-        pass
+        # write
+        self.file_ref_list[buffer_idx].write(self.buffer_list[buffer_idx].tobytes())
+        # flush Python buffer
+        self.file_ref_list[buffer_idx].flush()
+        # sync the write at the FS level
+        os.fsync(self.file_ref_list[buffer_idx].fileno())
 
     def run(self, duration_s: int):
 
