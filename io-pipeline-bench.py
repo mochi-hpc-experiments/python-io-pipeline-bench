@@ -151,7 +151,9 @@ class pipeline_asyncio(pipeline):
         # use the to_thread asyncio option to call the os function
         await asyncio.to_thread(os.fsync, file_ref.fileno())
 
-    async def _per_buffer_loop(self, buffer_idx: int, duration_s: int):
+    async def _per_buffer_loop(self, buffer_idx: int, duration_s: int) -> int:
+
+        my_buffers_xferred = 0;
 
         while (time.perf_counter() - self.start_ts) < duration_s:
             # recv data
@@ -162,7 +164,9 @@ class pipeline_asyncio(pipeline):
             await self._write(buffer_idx)
 
             # bookkeeping
-            self.buffers_xferred += 1
+            my_buffers_xferred += 1
+
+        return(my_buffers_xferred)
 
     async def _concurrent_run(self, duration_s: int):
 
@@ -179,7 +183,7 @@ class pipeline_asyncio(pipeline):
 
         # run tasks concurrently; each will continue until time is elapsed
         results = await asyncio.gather(*tasks)
-        # TODO: check results?
+        self.buffers_xferred = sum(results)
 
         # TODO: think about this: is this what we want for timing?
         # don't count end time until we get back to this point
