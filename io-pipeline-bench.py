@@ -8,6 +8,7 @@ import os
 import asyncio
 import aiofiles
 import sys
+from multiprocessing import Pool
 
 # base class for pipeline
 class pipeline:
@@ -110,6 +111,94 @@ class pipeline_sequential(pipeline):
         self._close_files()
 
 
+# multiprocess version of pipeline
+class pipeline_multiprocess(pipeline):
+    def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
+                 float, output_file_base: str):
+
+        super().__init__(buffer_size_bytes=buffer_size_bytes,
+                         concurrency=concurrency, recv_delay=recv_delay,
+                         output_file_base=output_file_base)
+
+    def _openfiles(self, filename: str):
+        # open files
+        for i in range(0, self.concurrency):
+            filename = self.output_file_base + f".{i}"
+            self.file_ref_list.append(open(filename, 'wb'))
+
+    def _recv(self):
+        # don't do anything except wait for configurable time to mimic a
+        # delay in receiving data
+        sleep(self.recv_delay)
+
+    def _compute(self, buffer_idx: int):
+        # fill the specified buffer with random data, byte by byte
+        for i in range(0, self.buffer_size_bytes):
+            random_byte_int = random.randint(0,255)
+            self.buffer_list[buffer_idx][i] = random_byte_int
+
+    def _write(self, buffer_idx: int):
+        file_ref = self.file_ref_list[buffer_idx]
+        buffer_bytes = self.buffer_list[buffer_idx].tobytes()
+
+        # write
+        file_ref.write(buffer_bytes)
+
+        # flush Python buffer
+        file_ref.flush()
+
+        # sync the write at the FS level
+        os.fsync(file_ref.fileno())
+
+    def _per_buffer_loop(self, buffer_idx: int) -> int:
+
+        my_buffers_xferred = 0;
+
+        while (time.perf_counter() - self.start_ts) < self.duration_s:
+            # recv data
+            self._recv()
+            # compute
+            self._compute(buffer_idx)
+            # write and flush
+            self._write(buffer_idx)
+
+            # bookkeeping
+            my_buffers_xferred += 1
+
+        return(my_buffers_xferred)
+
+    def run(self, duration_s: int):
+
+        self._openfiles(self.output_file_base)
+
+        # start timer
+        self.start_ts = time.perf_counter()
+
+        # map() expects one iterable argument.  for expedency let's stash
+        # the duration in the object so we don't have to do anything complex
+        # to pass it along
+        self.duration_s = duration_s
+
+        # launch concurrent pipelines
+        with Pool(self.concurrency) as p:
+            results = p.map(self._per_buffer_loop, range(0, self.concurrency))
+
+        # TODO: think about this: is this what we want for timing?
+        # don't count end time until we get back to this point
+        self.elapsed = time.perf_counter() - self.start_ts
+
+        self.buffers_xferred = sum(results)
+
+        self._close()
+
+    def _close(self):
+        # close and unlink files
+        for i in range(0, self.concurrency):
+            self.file_ref_list[i].close()
+            filename = self.output_file_base + f".{i}"
+            os.unlink(filename)
+
+
 # asyncio version of pipeline
 class pipeline_asyncio(pipeline):
     def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
@@ -183,11 +272,12 @@ class pipeline_asyncio(pipeline):
 
         # run tasks concurrently; each will continue until time is elapsed
         results = await asyncio.gather(*tasks)
-        self.buffers_xferred = sum(results)
 
         # TODO: think about this: is this what we want for timing?
         # don't count end time until we get back to this point
         self.elapsed = time.perf_counter() - self.start_ts
+
+        self.buffers_xferred = sum(results)
 
         await self._close()
 
@@ -197,7 +287,6 @@ class pipeline_asyncio(pipeline):
         # that we can launch it and await it's completion from a non-async
         # function
         asyncio.run(self._concurrent_run(duration_s))
-        # TODO: check result?
 
     async def _close(self):
         # close and unlink files
@@ -231,6 +320,12 @@ def main():
                                           output_file_base=args.output_file);
     elif args.method == "asyncio":
         my_pipeline = pipeline_asyncio(buffer_size_bytes=
+                                          (args.buffer_size*1024),
+                                          concurrency=args.concurrency,
+                                          recv_delay=args.recv_delay,
+                                          output_file_base=args.output_file);
+    elif args.method == "multiprocess":
+        my_pipeline = pipeline_multiprocess(buffer_size_bytes=
                                           (args.buffer_size*1024),
                                           concurrency=args.concurrency,
                                           recv_delay=args.recv_delay,
