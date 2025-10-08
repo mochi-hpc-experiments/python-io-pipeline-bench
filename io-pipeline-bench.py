@@ -6,6 +6,7 @@ import time
 import random
 import os
 import asyncio
+import aiofiles
 
 # base class for pipeline
 class pipeline:
@@ -20,20 +21,10 @@ class pipeline:
         self.file_ref_list = []
         self.output_file_base = output_file_base
 
-        # create a list of buffers, and also open a file for each one
+        # create a list of buffers
         for i in range(0, self.concurrency):
-            filename = self.output_file_base + f".{i}"
             self.buffer_list.append(array.array('B',
                                     bytes(self.buffer_size_bytes)))
-            self.file_ref_list.append(open(filename, 'wb'))
-
-    def close(self):
-        for i in range(0, self.concurrency):
-            self.file_ref_list[i].close()
-            filename = self.output_file_base + f".{i}"
-            os.unlink(filename)
-
-        self.buffer_list = []
 
     def run(self, duration_s: int):
         pass
@@ -56,6 +47,11 @@ class pipeline_sequential(pipeline):
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
 
+    def _open_files(self, output_file_base: str):
+        for i in range(0, self.concurrency):
+            filename = self.output_file_base + f".{i}"
+            self.file_ref_list.append(open(filename, 'wb'))
+
     def _recv(self):
         # don't do anything except wait for configurable time to mimic a
         # delay in receiving data
@@ -75,14 +71,21 @@ class pipeline_sequential(pipeline):
         # sync the write at the FS level
         os.fsync(self.file_ref_list[buffer_idx].fileno())
 
+    def _close_files(self):
+        # close and unlink files
+        for i in range(0, self.concurrency):
+            self.file_ref_list[i].close()
+            filename = self.output_file_base + f".{i}"
+            os.unlink(filename)
+
     def run(self, duration_s: int):
+
+        self._open_files(self.output_file_base)
 
         # no concurrency, we just step by step execute the steps in a loop
         start_ts = time.perf_counter()
 
         while (time.perf_counter() - start_ts) < duration_s:
-            # 3 steps per pipeline:
-
             # recv data
             self._recv()
 
@@ -97,6 +100,9 @@ class pipeline_sequential(pipeline):
 
         self.elapsed = time.perf_counter() - start_ts
 
+        self._close_files()
+
+
 # asyncio version of pipeline
 class pipeline_asyncio(pipeline):
     def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
@@ -106,10 +112,16 @@ class pipeline_asyncio(pipeline):
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
 
-    def _recv(self):
+    async def _openfiles(self, filename: str):
+        # open files
+        for i in range(0, self.concurrency):
+            filename = self.output_file_base + f".{i}"
+            self.file_ref_list.append(await aiofiles.open(filename, 'wb'))
+
+    async def _recv(self):
         # don't do anything except wait for configurable time to mimic a
         # delay in receiving data
-        time.sleep(self.recv_delay)
+        await asyncio.sleep(self.recv_delay)
 
     def _compute(self, buffer_idx: int):
         # fill the specified buffer with random data, byte by byte
@@ -117,28 +129,37 @@ class pipeline_asyncio(pipeline):
             random_byte_int = random.randint(0,255)
             self.buffer_list[buffer_idx][i] = random_byte_int
 
-    def _write(self, buffer_idx: int):
+    async def _write(self, buffer_idx: int):
+        file_ref = self.file_ref_list[buffer_idx]
+        buffer_bytes = self.buffer_list[buffer_idx].tobytes()
+
         # write
-        self.file_ref_list[buffer_idx].write(self.buffer_list[buffer_idx].tobytes())
+        await file_ref.write(buffer_bytes)
+
         # flush Python buffer
-        self.file_ref_list[buffer_idx].flush()
+        await file_ref.flush()
+
         # sync the write at the FS level
-        os.fsync(self.file_ref_list[buffer_idx].fileno())
+        # note that there is no true fsync exposed by aiofiles, we have to
+        # use the to_thread asyncio option to call the os function
+        await asyncio.to_thread(os.fsync, file_ref.fileno())
 
     async def _per_buffer_loop(self, buffer_idx: int, duration_s: int):
 
         while (time.perf_counter() - self.start_ts) < duration_s:
             # recv data
-            self._recv()
+            await self._recv()
             # compute
             self._compute(buffer_idx)
             # write and flush
-            self._write(buffer_idx)
+            await self._write(buffer_idx)
 
             # bookkeeping
             self.buffers_xferred += 1
 
-    async def _concurrent_loop(self, duration_s: int):
+    async def _concurrent_run(self, duration_s: int):
+
+        await self._openfiles(self.output_file_base)
 
         # create an array of N tasks for desired concurrency; each will
         # essentially operate an independent loop on it's corresponding
@@ -153,18 +174,27 @@ class pipeline_asyncio(pipeline):
         results = await asyncio.gather(*tasks)
         # TODO: check results?
 
-        # TODO: think about this: is this what we want?
+        # TODO: think about this: is this what we want for timing?
         # don't count end time until we get back to this point
         self.elapsed = time.perf_counter() - self.start_ts
+
+        await self._close()
 
     def run(self, duration_s: int):
 
         # this function is really just a wrapper around _concurrent loop so
         # that we can launch it and await it's completion from a non-async
         # function
-
-        asyncio.run(self._concurrent_loop(duration_s))
+        asyncio.run(self._concurrent_run(duration_s))
         # TODO: check result?
+
+    async def _close(self):
+        # close and unlink files
+        for i in range(0, self.concurrency):
+            await self.file_ref_list[i].close()
+            filename = self.output_file_base + f".{i}"
+            os.unlink(filename)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -198,9 +228,8 @@ def main():
         raise ValueError(f"Invalid method: {args.method}")
 
     my_pipeline.run(duration_s=args.duration)
+
     my_pipeline.report_timing()
-    # TODO: could refactor this to use a context manager I guess
-    my_pipeline.close()
 
 
 if __name__ == "__main__":
