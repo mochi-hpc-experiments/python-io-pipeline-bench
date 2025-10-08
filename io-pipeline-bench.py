@@ -32,6 +32,12 @@ class pipeline:
 
     def report_timing(self):
 
+        print(f"# Python version: {sys.version}")
+        if hasattr(sys, '_is_gil_enabled'):
+            is_gil_currently_enabled = sys._is_gil_enabled()
+            print(f"# GIL enabled: {sys._is_gil_enabled()}")
+        else:
+            print(f"# sys._is_gil_enabled() is not available in this Python interpreter.")
         MiB = self.buffers_xferred * self.buffer_size_bytes/(1024*1024)
         print(f"Transferred {MiB} MiB in {self.elapsed} seconds.")
         print(f"{MiB/self.elapsed} MiB/s")
