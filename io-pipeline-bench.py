@@ -8,7 +8,7 @@ import os
 import asyncio
 import aiofiles
 import sys
-from multiprocessing import Pool
+import multiprocessing
 
 # base class for pipeline
 class pipeline:
@@ -120,16 +120,10 @@ class pipeline_multiprocess(pipeline):
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
 
-    def _openfiles(self, filename: str):
-        # open files
-        for i in range(0, self.concurrency):
-            filename = self.output_file_base + f".{i}"
-            self.file_ref_list.append(open(filename, 'wb'))
-
     def _recv(self):
         # don't do anything except wait for configurable time to mimic a
         # delay in receiving data
-        sleep(self.recv_delay)
+        time.sleep(self.recv_delay)
 
     def _compute(self, buffer_idx: int):
         # fill the specified buffer with random data, byte by byte
@@ -137,8 +131,7 @@ class pipeline_multiprocess(pipeline):
             random_byte_int = random.randint(0,255)
             self.buffer_list[buffer_idx][i] = random_byte_int
 
-    def _write(self, buffer_idx: int):
-        file_ref = self.file_ref_list[buffer_idx]
+    def _write(self, buffer_idx: int, file_ref):
         buffer_bytes = self.buffer_list[buffer_idx].tobytes()
 
         # write
@@ -152,27 +145,36 @@ class pipeline_multiprocess(pipeline):
 
     def _per_buffer_loop(self, buffer_idx: int) -> int:
 
-        my_buffers_xferred = 0;
+        # TODO: we may as well have used a context manager here since the
+        # file reference lives in one function
 
-        while (time.perf_counter() - self.start_ts) < self.duration_s:
+        my_buffers_xferred = 0;
+        my_filename = self.output_file_base + f".{buffer_idx}"
+        my_file_ref = open(my_filename, 'wb')
+
+        self._barrier.wait()
+
+        # start timer (local)
+        my_start_ts = time.perf_counter()
+
+        while (time.perf_counter() - my_start_ts) < self.duration_s:
             # recv data
             self._recv()
             # compute
             self._compute(buffer_idx)
             # write and flush
-            self._write(buffer_idx)
+            self._write(buffer_idx, my_file_ref)
 
             # bookkeeping
             my_buffers_xferred += 1
 
+        # close and unlink file
+        my_file_ref.close()
+        os.unlink(my_filename)
+
         return(my_buffers_xferred)
 
     def run(self, duration_s: int):
-
-        self._openfiles(self.output_file_base)
-
-        # start timer
-        self.start_ts = time.perf_counter()
 
         # map() expects one iterable argument.  for expedency let's stash
         # the duration in the object so we don't have to do anything complex
@@ -180,7 +182,13 @@ class pipeline_multiprocess(pipeline):
         self.duration_s = duration_s
 
         # launch concurrent pipelines
-        with Pool(self.concurrency) as p:
+
+        # Note that in this version, each concurrent pipeline has to open
+        # and close its own file, because there is no way to share a file
+        # descriptor across multiple processes.  We use a barrier to make
+        # sure that the open cost is not counted in the pipeline time.
+        self._barrier = multiprocessing.Barrier(self.concurrency)
+        with multiprocessing.Pool(self.concurrency) as p:
             results = p.map(self._per_buffer_loop, range(0, self.concurrency))
 
         # TODO: think about this: is this what we want for timing?
@@ -188,15 +196,6 @@ class pipeline_multiprocess(pipeline):
         self.elapsed = time.perf_counter() - self.start_ts
 
         self.buffers_xferred = sum(results)
-
-        self._close()
-
-    def _close(self):
-        # close and unlink files
-        for i in range(0, self.concurrency):
-            self.file_ref_list[i].close()
-            filename = self.output_file_base + f".{i}"
-            os.unlink(filename)
 
 
 # asyncio version of pipeline
