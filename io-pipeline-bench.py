@@ -5,6 +5,7 @@ import array
 import time
 import random
 import os
+import asyncio
 
 # base class for pipeline
 class pipeline:
@@ -96,6 +97,75 @@ class pipeline_sequential(pipeline):
 
         self.elapsed = time.perf_counter() - start_ts
 
+# asyncio version of pipeline
+class pipeline_asyncio(pipeline):
+    def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
+                 float, output_file_base: str):
+
+        super().__init__(buffer_size_bytes=buffer_size_bytes,
+                         concurrency=concurrency, recv_delay=recv_delay,
+                         output_file_base=output_file_base)
+
+    def _recv(self):
+        # don't do anything except wait for configurable time to mimic a
+        # delay in receiving data
+        time.sleep(self.recv_delay)
+
+    def _compute(self, buffer_idx: int):
+        # fill the specified buffer with random data, byte by byte
+        for i in range(0, self.buffer_size_bytes):
+            random_byte_int = random.randint(0,255)
+            self.buffer_list[buffer_idx][i] = random_byte_int
+
+    def _write(self, buffer_idx: int):
+        # write
+        self.file_ref_list[buffer_idx].write(self.buffer_list[buffer_idx].tobytes())
+        # flush Python buffer
+        self.file_ref_list[buffer_idx].flush()
+        # sync the write at the FS level
+        os.fsync(self.file_ref_list[buffer_idx].fileno())
+
+    async def _per_buffer_loop(self, buffer_idx: int, duration_s: int):
+
+        while (time.perf_counter() - self.start_ts) < duration_s:
+            # recv data
+            self._recv()
+            # compute
+            self._compute(buffer_idx)
+            # write and flush
+            self._write(buffer_idx)
+
+            # bookkeeping
+            self.buffers_xferred += 1
+
+    async def _concurrent_loop(self, duration_s: int):
+
+        # create an array of N tasks for desired concurrency; each will
+        # essentially operate an independent loop on it's corresponding
+        # buffer/file
+        tasks = [self._per_buffer_loop(idx, duration_s) for idx in range(0,
+                                                                         self.concurrency)]
+
+        # start timer
+        self.start_ts = time.perf_counter()
+
+        # run tasks concurrently; each will continue until time is elapsed
+        results = await asyncio.gather(*tasks)
+        # TODO: check results?
+
+        # TODO: think about this: is this what we want?
+        # don't count end time until we get back to this point
+        self.elapsed = time.perf_counter() - self.start_ts
+
+    def run(self, duration_s: int):
+
+        # this function is really just a wrapper around _concurrent loop so
+        # that we can launch it and await it's completion from a non-async
+        # function
+
+        asyncio.run(self._concurrent_loop(duration_s))
+        # TODO: check result?
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--method', type=str, required=True,
@@ -114,6 +184,12 @@ def main():
 
     if args.method == "sequential":
         my_pipeline = pipeline_sequential(buffer_size_bytes=
+                                          (args.buffer_size*1024),
+                                          concurrency=args.concurrency,
+                                          recv_delay=args.recv_delay,
+                                          output_file_base=args.output_file);
+    elif args.method == "asyncio":
+        my_pipeline = pipeline_asyncio(buffer_size_bytes=
                                           (args.buffer_size*1024),
                                           concurrency=args.concurrency,
                                           recv_delay=args.recv_delay,
