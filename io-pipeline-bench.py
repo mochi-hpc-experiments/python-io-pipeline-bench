@@ -171,12 +171,11 @@ class pipeline_multiprocess(pipeline):
                 self._compute(buffer_idx)
                 # write and flush
                 self._write(buffer_idx, f)
-
                 # bookkeeping
                 my_buffers_xferred += 1
 
-                result['elapsed'] = time.perf_counter() - my_start_ts
-                result['buffers_xferred'] = my_buffers_xferred;
+        result['elapsed'] = time.perf_counter() - my_start_ts
+        result['buffers_xferred'] = my_buffers_xferred;
 
         os.unlink(my_filename)
 
