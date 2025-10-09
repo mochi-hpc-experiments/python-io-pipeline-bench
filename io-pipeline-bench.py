@@ -12,6 +12,12 @@ import multiprocessing
 import concurrent.futures
 import threading
 
+# --- Module-level Constants ---
+# how many bytes to increment when iterating through buffers in compute
+# phase.  Set to 1 to process all bytes, 2 to process every 2nd byte, etc.
+# This is a crude way to control the compute cost in the pipeline
+COMPUTE_SPARSITY = 8
+
 # base class for pipeline
 class pipeline:
     def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
@@ -34,7 +40,7 @@ class pipeline:
     def _compute(self, buffer_idx: int) -> float:
         start_ts = time.perf_counter()
         # fill the specified buffer with random data, byte by byte
-        for i in range(0, self.buffer_size_bytes):
+        for i in range(0, self.buffer_size_bytes, COMPUTE_SPARSITY):
             random_byte_int = random.randint(0,255)
             self.buffer_list[buffer_idx][i] = random_byte_int
         return(time.perf_counter() - start_ts)
