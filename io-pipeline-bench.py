@@ -79,38 +79,28 @@ class pipeline_sequential(pipeline):
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
 
-    def _open_files(self, output_file_base: str):
-        for i in range(0, self.concurrency):
-            filename = self.output_file_base + f".{i}"
-            self.file_ref_list.append(open(filename, 'wb'))
-
-    def _close_files(self):
-        # close and unlink files
-        for i in range(0, self.concurrency):
-            self.file_ref_list[i].close()
-            filename = self.output_file_base + f".{i}"
-            os.unlink(filename)
-
     def run(self, duration_s: int):
 
-        self._open_files(self.output_file_base)
+        my_filename = self.output_file_base + f"0"
+        with open(my_filename, 'wb') as f:
 
-        # no concurrency, we just step by step execute the steps in a loop
-        start_ts = time.perf_counter()
+            # no concurrency, we just step by step execute the steps in a loop
+            start_ts = time.perf_counter()
 
-        while (time.perf_counter() - start_ts) < duration_s:
-            # recv data
-            self._recv()
-            # compute
-            self._compute(0)
-            # write and flush
-            self._write(0, self.file_ref_list[0])
-            # bookkeeping
-            self.buffers_xferred += 1
+            while (time.perf_counter() - start_ts) < duration_s:
+                # recv data
+                self._recv()
+                # compute
+                self._compute(0)
+                # write and flush
+                self._write(0, f)
+                # bookkeeping
+                self.buffers_xferred += 1
 
-        self.elapsed = time.perf_counter() - start_ts
+            self.elapsed = time.perf_counter() - start_ts
 
-        self._close_files()
+        os.unlink(my_filename)
+
 
 # threading version of pipeline
 class pipeline_threading(pipeline):
@@ -278,6 +268,13 @@ class pipeline_asyncio(pipeline):
             filename = self.output_file_base + f".{i}"
             self.file_ref_list.append(await aiofiles.open(filename, 'wb'))
 
+    async def _close_files(self):
+        # close and unlink files
+        for i in range(0, self.concurrency):
+            await self.file_ref_list[i].close()
+            filename = self.output_file_base + f".{i}"
+            os.unlink(filename)
+
     async def _recv(self):
         # note that we override this function for asyncio so that we can use
         # an async-aware sleep function
@@ -340,7 +337,7 @@ class pipeline_asyncio(pipeline):
             if(result['elapsed'] > self.elapsed):
                 self.elapsed = result['elapsed']
 
-        await self._close()
+        await self._close_files()
 
     def run(self, duration_s: int):
 
@@ -348,13 +345,6 @@ class pipeline_asyncio(pipeline):
         # that we can launch it and await it's completion from a non-async
         # function
         asyncio.run(self._concurrent_run(duration_s))
-
-    async def _close(self):
-        # close and unlink files
-        for i in range(0, self.concurrency):
-            await self.file_ref_list[i].close()
-            filename = self.output_file_base + f".{i}"
-            os.unlink(filename)
 
 
 def main():
