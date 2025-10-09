@@ -30,6 +30,17 @@ class pipeline:
             self.buffer_list.append(array.array('B',
                                     bytes(self.buffer_size_bytes)))
 
+    def _compute(self, buffer_idx: int):
+        # fill the specified buffer with random data, byte by byte
+        for i in range(0, self.buffer_size_bytes):
+            random_byte_int = random.randint(0,255)
+            self.buffer_list[buffer_idx][i] = random_byte_int
+
+    def _recv(self):
+        # don't do anything except wait for configurable time to mimic a
+        # delay in receiving data
+        time.sleep(self.recv_delay)
+
     def run(self, duration_s: int):
         pass
 
@@ -64,17 +75,6 @@ class pipeline_sequential(pipeline):
         for i in range(0, self.concurrency):
             filename = self.output_file_base + f".{i}"
             self.file_ref_list.append(open(filename, 'wb'))
-
-    def _recv(self):
-        # don't do anything except wait for configurable time to mimic a
-        # delay in receiving data
-        time.sleep(self.recv_delay)
-
-    def _compute(self, buffer_idx: int):
-        # fill the specified buffer with random data, byte by byte
-        for i in range(0, self.buffer_size_bytes):
-            random_byte_int = random.randint(0,255)
-            self.buffer_list[buffer_idx][i] = random_byte_int
 
     def _write(self, buffer_idx: int):
         # write
@@ -120,17 +120,6 @@ class pipeline_threading(pipeline):
         super().__init__(buffer_size_bytes=buffer_size_bytes,
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
-
-    def _recv(self):
-        # don't do anything except wait for configurable time to mimic a
-        # delay in receiving data
-        time.sleep(self.recv_delay)
-
-    def _compute(self, buffer_idx: int):
-        # fill the specified buffer with random data, byte by byte
-        for i in range(0, self.buffer_size_bytes):
-            random_byte_int = random.randint(0,255)
-            self.buffer_list[buffer_idx][i] = random_byte_int
 
     def _write(self, buffer_idx: int, file_ref):
         buffer_bytes = self.buffer_list[buffer_idx].tobytes()
@@ -219,17 +208,6 @@ class pipeline_multiprocess(pipeline):
         super().__init__(buffer_size_bytes=buffer_size_bytes,
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
-
-    def _recv(self):
-        # don't do anything except wait for configurable time to mimic a
-        # delay in receiving data
-        time.sleep(self.recv_delay)
-
-    def _compute(self, buffer_idx: int):
-        # fill the specified buffer with random data, byte by byte
-        for i in range(0, self.buffer_size_bytes):
-            random_byte_int = random.randint(0,255)
-            self.buffer_list[buffer_idx][i] = random_byte_int
 
     def _write(self, buffer_idx: int, file_ref):
         buffer_bytes = self.buffer_list[buffer_idx].tobytes()
@@ -327,15 +305,12 @@ class pipeline_asyncio(pipeline):
             self.file_ref_list.append(await aiofiles.open(filename, 'wb'))
 
     async def _recv(self):
+        # note that we override this function for asyncio so that we can use
+        # an async-aware sleep function
+
         # don't do anything except wait for configurable time to mimic a
         # delay in receiving data
         await asyncio.sleep(self.recv_delay)
-
-    def _compute(self, buffer_idx: int):
-        # fill the specified buffer with random data, byte by byte
-        for i in range(0, self.buffer_size_bytes):
-            random_byte_int = random.randint(0,255)
-            self.buffer_list[buffer_idx][i] = random_byte_int
 
     async def _write(self, buffer_idx: int):
         file_ref = self.file_ref_list[buffer_idx]
