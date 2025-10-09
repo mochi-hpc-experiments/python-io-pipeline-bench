@@ -260,6 +260,7 @@ class pipeline_asyncio(pipeline):
     async def _per_buffer_loop(self, buffer_idx: int, duration_s: int) -> int:
 
         my_buffers_xferred = 0;
+        result = {}
 
         while (time.perf_counter() - self.start_ts) < duration_s:
             # recv data
@@ -272,7 +273,10 @@ class pipeline_asyncio(pipeline):
             # bookkeeping
             my_buffers_xferred += 1
 
-        return(my_buffers_xferred)
+        result['elapsed'] = time.perf_counter() - self.start_ts
+        result['buffers_xferred'] = my_buffers_xferred;
+
+        return(result)
 
     async def _concurrent_run(self, duration_s: int):
 
@@ -290,12 +294,11 @@ class pipeline_asyncio(pipeline):
         # run tasks concurrently; each will continue until time is elapsed
         results = await asyncio.gather(*tasks)
 
-        # TODO: change this to look like the multiprocess example, where we
-        # collect time from each loop and save the maximum
-        # don't count end time until we get back to this point
-        self.elapsed = time.perf_counter() - self.start_ts
-
-        self.buffers_xferred = sum(results)
+        # sum buffers xferred and find the max elapsed time
+        for result in results:
+            self.buffers_xferred += result['buffers_xferred']
+            if(result['elapsed'] > self.elapsed):
+                self.elapsed = result['elapsed']
 
         await self._close()
 
