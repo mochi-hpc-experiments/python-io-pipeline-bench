@@ -10,6 +10,7 @@ import aiofiles
 import sys
 import multiprocessing
 import concurrent.futures
+import threading
 
 # base class for pipeline
 class pipeline:
@@ -108,6 +109,106 @@ class pipeline_sequential(pipeline):
 
         self._close_files()
 
+# threading version of pipeline
+class pipeline_threading(pipeline):
+    def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
+                 float, output_file_base: str):
+
+        super().__init__(buffer_size_bytes=buffer_size_bytes,
+                         concurrency=concurrency, recv_delay=recv_delay,
+                         output_file_base=output_file_base)
+
+    def _recv(self):
+        # don't do anything except wait for configurable time to mimic a
+        # delay in receiving data
+        time.sleep(self.recv_delay)
+
+    def _compute(self, buffer_idx: int):
+        # fill the specified buffer with random data, byte by byte
+        for i in range(0, self.buffer_size_bytes):
+            random_byte_int = random.randint(0,255)
+            self.buffer_list[buffer_idx][i] = random_byte_int
+
+    def _write(self, buffer_idx: int, file_ref):
+        buffer_bytes = self.buffer_list[buffer_idx].tobytes()
+
+        # write
+        file_ref.write(buffer_bytes)
+
+        # flush Python buffer
+        file_ref.flush()
+
+        # sync the write at the FS level
+        os.fsync(file_ref.fileno())
+
+
+    def _per_buffer_loop(self, buffer_idx: int, barrier):
+
+        result = {}
+
+        my_buffers_xferred = 0;
+        my_filename = self.output_file_base + f".{buffer_idx}"
+
+        # Note that we can use a context manager in this case since we have
+        # combined all of the file operations into a single function so that
+        # it is multiprocessing safe (file references cannot be exchanged
+        # across processes)
+        with open(my_filename, 'wb') as f:
+
+            # synchronize after getting files opened
+            barrier.wait()
+
+            # start timer (local)
+            my_start_ts = time.perf_counter()
+
+            while (time.perf_counter() - my_start_ts) < self.duration_s:
+                # recv data
+                self._recv()
+                # compute
+                self._compute(buffer_idx)
+                # write and flush
+                self._write(buffer_idx, f)
+                # bookkeeping
+                my_buffers_xferred += 1
+
+        result['elapsed'] = time.perf_counter() - my_start_ts
+        result['buffers_xferred'] = my_buffers_xferred;
+
+        os.unlink(my_filename)
+
+        return(result)
+
+    def run(self, duration_s: int):
+
+        # TODO: this should be an argument to the loop function
+        self.duration_s = duration_s
+
+        # launch concurrent pipelines
+
+        # Note that each function opens and closes its own files, following
+        # the pattern used by the multiprocessing example, even though file
+        # references could be shared across threads.
+        barrier = threading.Barrier(self.concurrency)
+        futures = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.concurrency) as executor:
+            for i in range(0, self.concurrency):
+                future = executor.submit(self._per_buffer_loop,
+                                         buffer_idx=i,
+                                         barrier=barrier)
+                futures[future] = i
+
+            # Iterate over futures as they complete, in the order of completion
+            for future in concurrent.futures.as_completed(futures):
+                task_id = futures[future] # Get the original task_id from the future
+                try:
+                    result = future.result()
+                    self.buffers_xferred += result['buffers_xferred']
+                    if(result['elapsed'] > self.elapsed):
+                        self.elapsed = result['elapsed']
+                except Exception as exc:
+                    print(f"Task {task_id} generated an exception: {exc}")
+
+
 
 # multiprocess version of pipeline
 class pipeline_multiprocess(pipeline):
@@ -180,9 +281,7 @@ class pipeline_multiprocess(pipeline):
 
     def run(self, duration_s: int):
 
-        # map() expects one iterable argument.  for expedency let's stash
-        # the duration in the object so we don't have to do anything complex
-        # to pass it along
+        # TODO: this should be an argument to the loop function.
         self.duration_s = duration_s
 
         # launch concurrent pipelines
@@ -344,6 +443,12 @@ def main():
                                           output_file_base=args.output_file);
     elif args.method == "multiprocess":
         my_pipeline = pipeline_multiprocess(buffer_size_bytes=
+                                          (args.buffer_size*1024),
+                                          concurrency=args.concurrency,
+                                          recv_delay=args.recv_delay,
+                                          output_file_base=args.output_file);
+    elif args.method == "threading":
+        my_pipeline = pipeline_threading(buffer_size_bytes=
                                           (args.buffer_size*1024),
                                           concurrency=args.concurrency,
                                           recv_delay=args.recv_delay,
