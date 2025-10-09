@@ -24,17 +24,20 @@ class pipeline:
         self.buffer_list = []
         self.file_ref_list = []
         self.output_file_base = output_file_base
+        self.cumul_compute_time = 0
 
         # create a list of buffers
         for i in range(0, self.concurrency):
             self.buffer_list.append(array.array('B',
                                     bytes(self.buffer_size_bytes)))
 
-    def _compute(self, buffer_idx: int):
+    def _compute(self, buffer_idx: int) -> float:
+        start_ts = time.perf_counter()
         # fill the specified buffer with random data, byte by byte
         for i in range(0, self.buffer_size_bytes):
             random_byte_int = random.randint(0,255)
             self.buffer_list[buffer_idx][i] = random_byte_int
+        return(time.perf_counter() - start_ts)
 
     def _recv(self):
         # don't do anything except wait for configurable time to mimic a
@@ -60,12 +63,14 @@ class pipeline:
             is_gil_currently_enabled = True
         major_minor = f"{sys.version_info.major}.{sys.version_info.minor}"
         MiB = self.buffers_xferred * self.buffer_size_bytes/(1024*1024)
+        compute_rate = MiB/self.cumul_compute_time;
 
         print(f"#<Python version>\t<GIL enabled>\t<method>\t<concurrency>\t"
-              f"<duration>\t<KiB buffer_size>\t<MiB xferred>\t<seconds>\t<MiB/s>")
+              f"<duration>\t<KiB buffer_size>\t<MiB xferred>\t<sequential compute "
+              f"throughput (MiB/s)>\t<seconds>\t<aggregate overall throughput (MiB/s)>")
         print(f"{major_minor}\t{is_gil_currently_enabled}\t{method}\t"
               f"{self.concurrency}\t{duration_s}\t{self.buffer_size_bytes/1024}\t"
-              f"{MiB:.3f}\t{self.elapsed:.3f}\t{MiB/self.elapsed:.3f}")
+              f"{MiB:.3f}\t{compute_rate:.3f}\t{self.elapsed:.3f}\t{MiB/self.elapsed:.3f}")
 
 # sequential version of pipeline
 class pipeline_sequential(pipeline):
@@ -91,7 +96,7 @@ class pipeline_sequential(pipeline):
                 # recv data
                 self._recv()
                 # compute
-                self._compute(0)
+                self.cumul_compute_time += self._compute(0)
                 # write and flush
                 self._write(0, f)
                 # bookkeeping
@@ -116,6 +121,7 @@ class pipeline_threading(pipeline):
         result = {}
 
         my_buffers_xferred = 0;
+        my_cumul_compute_time = 0;
         my_filename = self.output_file_base + f".{buffer_idx}"
 
         # Note that we can use a context manager in this case since we have
@@ -134,7 +140,7 @@ class pipeline_threading(pipeline):
                 # recv data
                 self._recv()
                 # compute
-                self._compute(buffer_idx)
+                my_cumul_compute_time += self._compute(buffer_idx)
                 # write and flush
                 self._write(buffer_idx, f)
                 # bookkeeping
@@ -142,6 +148,7 @@ class pipeline_threading(pipeline):
 
         result['elapsed'] = time.perf_counter() - my_start_ts
         result['buffers_xferred'] = my_buffers_xferred;
+        result['cumul_compute_time'] = my_cumul_compute_time
 
         os.unlink(my_filename)
 
@@ -170,6 +177,7 @@ class pipeline_threading(pipeline):
                 try:
                     result = future.result()
                     self.buffers_xferred += result['buffers_xferred']
+                    self.cumul_compute_time += result['cumul_compute_time']
                     if(result['elapsed'] > self.elapsed):
                         self.elapsed = result['elapsed']
                 except Exception as exc:
@@ -190,7 +198,8 @@ class pipeline_multiprocess(pipeline):
 
         result = {}
 
-        my_buffers_xferred = 0;
+        my_buffers_xferred = 0
+        my_cumul_compute_time = 0
         my_filename = self.output_file_base + f".{buffer_idx}"
 
         # Note that we can use a context manager in this case since we have
@@ -209,7 +218,7 @@ class pipeline_multiprocess(pipeline):
                 # recv data
                 self._recv()
                 # compute
-                self._compute(buffer_idx)
+                my_cumul_compute_time += self._compute(buffer_idx)
                 # write and flush
                 self._write(buffer_idx, f)
                 # bookkeeping
@@ -217,6 +226,7 @@ class pipeline_multiprocess(pipeline):
 
         result['elapsed'] = time.perf_counter() - my_start_ts
         result['buffers_xferred'] = my_buffers_xferred;
+        result['cumul_compute_time'] = my_cumul_compute_time
 
         os.unlink(my_filename)
 
@@ -247,6 +257,7 @@ class pipeline_multiprocess(pipeline):
                     try:
                         result = future.result()
                         self.buffers_xferred += result['buffers_xferred']
+                        self.cumul_compute_time += result['cumul_compute_time']
                         if(result['elapsed'] > self.elapsed):
                             self.elapsed = result['elapsed']
                     except Exception as exc:
@@ -296,14 +307,15 @@ class pipeline_asyncio(pipeline):
 
     async def _per_buffer_loop(self, buffer_idx: int, duration_s: int) -> int:
 
-        my_buffers_xferred = 0;
+        my_cumul_compute_time = 0
+        my_buffers_xferred = 0
         result = {}
 
         while (time.perf_counter() - self.start_ts) < duration_s:
             # recv data
             await self._recv()
             # compute
-            self._compute(buffer_idx)
+            my_cumul_compute_time += self._compute(buffer_idx)
             # write and flush
             await self._write(buffer_idx, self.file_ref_list[buffer_idx])
 
@@ -311,7 +323,8 @@ class pipeline_asyncio(pipeline):
             my_buffers_xferred += 1
 
         result['elapsed'] = time.perf_counter() - self.start_ts
-        result['buffers_xferred'] = my_buffers_xferred;
+        result['buffers_xferred'] = my_buffers_xferred
+        result['cumul_compute_time'] = my_cumul_compute_time
 
         return(result)
 
@@ -334,6 +347,7 @@ class pipeline_asyncio(pipeline):
         # sum buffers xferred and find the max elapsed time
         for result in results:
             self.buffers_xferred += result['buffers_xferred']
+            self.cumul_compute_time += result['cumul_compute_time']
             if(result['elapsed'] > self.elapsed):
                 self.elapsed = result['elapsed']
 
