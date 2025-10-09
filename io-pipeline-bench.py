@@ -142,7 +142,7 @@ class pipeline_threading(pipeline):
         os.fsync(file_ref.fileno())
 
 
-    def _per_buffer_loop(self, buffer_idx: int, barrier):
+    def _per_buffer_loop(self, buffer_idx: int, duration_s: int, barrier):
 
         result = {}
 
@@ -161,7 +161,7 @@ class pipeline_threading(pipeline):
             # start timer (local)
             my_start_ts = time.perf_counter()
 
-            while (time.perf_counter() - my_start_ts) < self.duration_s:
+            while (time.perf_counter() - my_start_ts) < duration_s:
                 # recv data
                 self._recv()
                 # compute
@@ -180,9 +180,6 @@ class pipeline_threading(pipeline):
 
     def run(self, duration_s: int):
 
-        # TODO: this should be an argument to the loop function
-        self.duration_s = duration_s
-
         # launch concurrent pipelines
 
         # Note that each function opens and closes its own files, following
@@ -194,6 +191,7 @@ class pipeline_threading(pipeline):
             for i in range(0, self.concurrency):
                 future = executor.submit(self._per_buffer_loop,
                                          buffer_idx=i,
+                                         duration_s=duration_s,
                                          barrier=barrier)
                 futures[future] = i
 
@@ -243,7 +241,7 @@ class pipeline_multiprocess(pipeline):
         os.fsync(file_ref.fileno())
 
 
-    def _per_buffer_loop(self, buffer_idx: int, barrier):
+    def _per_buffer_loop(self, buffer_idx: int, duration_s: int, barrier):
 
         result = {}
 
@@ -262,7 +260,7 @@ class pipeline_multiprocess(pipeline):
             # start timer (local)
             my_start_ts = time.perf_counter()
 
-            while (time.perf_counter() - my_start_ts) < self.duration_s:
+            while (time.perf_counter() - my_start_ts) < duration_s:
                 # recv data
                 self._recv()
                 # compute
@@ -281,9 +279,6 @@ class pipeline_multiprocess(pipeline):
 
     def run(self, duration_s: int):
 
-        # TODO: this should be an argument to the loop function.
-        self.duration_s = duration_s
-
         # launch concurrent pipelines
         with multiprocessing.Manager() as manager:
 
@@ -297,6 +292,7 @@ class pipeline_multiprocess(pipeline):
                 for i in range(0, self.concurrency):
                     future = executor.submit(self._per_buffer_loop,
                                              buffer_idx=i,
+                                             duration_s=duration_s,
                                              barrier=barrier)
                     futures[future] = i
 
