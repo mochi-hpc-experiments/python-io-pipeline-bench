@@ -97,13 +97,10 @@ class pipeline_sequential(pipeline):
         while (time.perf_counter() - start_ts) < duration_s:
             # recv data
             self._recv()
-
             # compute
             self._compute(0)
-
             # write and flush
             self._write(0)
-
             # bookkeeping
             self.buffers_xferred += 1
 
