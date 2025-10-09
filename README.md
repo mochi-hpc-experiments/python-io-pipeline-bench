@@ -44,3 +44,20 @@ to execute concurrent pipelines.  This introduces a few caveats:
   in a multiprocessing manager.
 * Generally speaking, you have to be thoughtful about how to exchange state
   across processes.
+
+## Installing a non-GIL (free-threaded) Python interpretter
+
+* Download an official Python release tar ball (3.14 as of this writing).
+* Install dependencies.  For example on Ubuntu you may want the following:
+```
+sudo apt-get install libffi-dev libgdbm-dev tk-dev uuid-dev libzstd-dev libsqlite3-dev
+```
+* Run the following to configure and install, adjusting the installation
+  path as desired:
+```
+./configure --prefix=/home/carns/working/install/python3.14.0-nogil --disable-gil --enable-optimizations
+make -j 4
+make install
+```
+* You can then use the python3 binary installed in this path to create a
+  venv.
