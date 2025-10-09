@@ -41,6 +41,14 @@ class pipeline:
         # delay in receiving data
         time.sleep(self.recv_delay)
 
+    def _write(self, buffer_idx: int, file_ref):
+        # write
+        file_ref.write(self.buffer_list[buffer_idx].tobytes())
+        # flush Python buffer
+        file_ref.flush()
+        # sync the write at the FS level
+        os.fsync(file_ref.fileno())
+
     def run(self, duration_s: int):
         pass
 
@@ -76,14 +84,6 @@ class pipeline_sequential(pipeline):
             filename = self.output_file_base + f".{i}"
             self.file_ref_list.append(open(filename, 'wb'))
 
-    def _write(self, buffer_idx: int):
-        # write
-        self.file_ref_list[buffer_idx].write(self.buffer_list[buffer_idx].tobytes())
-        # flush Python buffer
-        self.file_ref_list[buffer_idx].flush()
-        # sync the write at the FS level
-        os.fsync(self.file_ref_list[buffer_idx].fileno())
-
     def _close_files(self):
         # close and unlink files
         for i in range(0, self.concurrency):
@@ -104,7 +104,7 @@ class pipeline_sequential(pipeline):
             # compute
             self._compute(0)
             # write and flush
-            self._write(0)
+            self._write(0, self.file_ref_list[0])
             # bookkeeping
             self.buffers_xferred += 1
 
@@ -120,19 +120,6 @@ class pipeline_threading(pipeline):
         super().__init__(buffer_size_bytes=buffer_size_bytes,
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
-
-    def _write(self, buffer_idx: int, file_ref):
-        buffer_bytes = self.buffer_list[buffer_idx].tobytes()
-
-        # write
-        file_ref.write(buffer_bytes)
-
-        # flush Python buffer
-        file_ref.flush()
-
-        # sync the write at the FS level
-        os.fsync(file_ref.fileno())
-
 
     def _per_buffer_loop(self, buffer_idx: int, duration_s: int, barrier):
 
@@ -208,19 +195,6 @@ class pipeline_multiprocess(pipeline):
         super().__init__(buffer_size_bytes=buffer_size_bytes,
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
-
-    def _write(self, buffer_idx: int, file_ref):
-        buffer_bytes = self.buffer_list[buffer_idx].tobytes()
-
-        # write
-        file_ref.write(buffer_bytes)
-
-        # flush Python buffer
-        file_ref.flush()
-
-        # sync the write at the FS level
-        os.fsync(file_ref.fileno())
-
 
     def _per_buffer_loop(self, buffer_idx: int, duration_s: int, barrier):
 
@@ -312,16 +286,12 @@ class pipeline_asyncio(pipeline):
         # delay in receiving data
         await asyncio.sleep(self.recv_delay)
 
-    async def _write(self, buffer_idx: int):
-        file_ref = self.file_ref_list[buffer_idx]
+    async def _write(self, buffer_idx: int, file_ref):
         buffer_bytes = self.buffer_list[buffer_idx].tobytes()
-
         # write
         await file_ref.write(buffer_bytes)
-
         # flush Python buffer
         await file_ref.flush()
-
         # sync the write at the FS level
         # note that there is no true fsync exposed by aiofiles, we have to
         # use the to_thread asyncio option to call the os function
@@ -338,7 +308,7 @@ class pipeline_asyncio(pipeline):
             # compute
             self._compute(buffer_idx)
             # write and flush
-            await self._write(buffer_idx)
+            await self._write(buffer_idx, self.file_ref_list[buffer_idx])
 
             # bookkeeping
             my_buffers_xferred += 1
