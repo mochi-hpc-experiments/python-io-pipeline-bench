@@ -72,10 +72,10 @@ class pipeline:
         compute_rate = MiB/self.cumul_compute_time;
 
         print(f"#<Python version>\t<GIL enabled>\t<method>\t<concurrency>\t"
-              f"<duration>\t<KiB buffer_size>\t<MiB xferred>\t<sequential compute "
+              f"<duration>\t<KiB buffer_size>\t<recv delay>\t<MiB xferred>\t<sequential compute "
               f"throughput (MiB/s)>\t<seconds>\t<aggregate overall throughput (MiB/s)>")
         print(f"{major_minor}\t{is_gil_currently_enabled}\t{method}\t"
-              f"{self.concurrency}\t{duration_s}\t{self.buffer_size_bytes/1024}\t"
+              f"{self.concurrency}\t{duration_s}\t{int(self.buffer_size_bytes/1024)}\t{self.recv_delay:.3f}\t"
               f"{MiB:.3f}\t{compute_rate:.3f}\t{self.elapsed:.3f}\t{MiB/self.elapsed:.3f}")
 
 # sequential version of pipeline
