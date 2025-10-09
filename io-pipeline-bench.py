@@ -178,7 +178,7 @@ class pipeline_multiprocess(pipeline):
 
         # close and unlink file
         my_file_ref.close()
-        # os.unlink(my_filename)
+        os.unlink(my_filename)
 
         return(result)
 
