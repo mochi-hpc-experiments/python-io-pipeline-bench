@@ -35,11 +35,12 @@ points to know:
 
 This method uses true processes (analogous to what you would get by forking)
 to execute concurrent pipelines.  This introduces a few caveats:
-* There isn't a good way to share a file descriptor across processes.  So
+* There isn't any way to share a file descriptor across processes.  So
   each pipeline has to do it's own file open and file close.  We use a
   barrier to synchronize them before starting the timed part of the
   pipeline.
 * In order for processes to share a barrier, the barrier must be passed as
-  an argument so that it can be properly pickled.
+  an argument so that it can be properly pickled.  It must also be created
+  in a multiprocessing manager.
 * Generally speaking, you have to be thoughtful about how to exchange state
   across processes.
