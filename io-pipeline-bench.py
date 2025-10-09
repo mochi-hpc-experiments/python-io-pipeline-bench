@@ -33,17 +33,20 @@ class pipeline:
     def run(self, duration_s: int):
         pass
 
-    def report_timing(self):
+    def report_timing(self, method:str, duration_s:int):
 
-        print(f"# Python version: {sys.version}")
         if hasattr(sys, '_is_gil_enabled'):
             is_gil_currently_enabled = sys._is_gil_enabled()
-            print(f"# GIL enabled: {sys._is_gil_enabled()}")
         else:
-            print(f"# sys._is_gil_enabled() is not available in this Python interpreter.")
+            is_gil_currently_enabled = True
+        major_minor = f"{sys.version_info.major}.{sys.version_info.minor}"
         MiB = self.buffers_xferred * self.buffer_size_bytes/(1024*1024)
-        print(f"Transferred {MiB} MiB in {self.elapsed} seconds.")
-        print(f"{MiB/self.elapsed} MiB/s")
+
+        print(f"#<Python version>\t<GIL enabled>\t<method>\t<concurrency>\t"
+              f"<duration>\t<KiB buffer_size>\t<MiB xferred>\t<seconds>\t<MiB/s>")
+        print(f"{major_minor}\t{is_gil_currently_enabled}\t{method}\t"
+              f"{self.concurrency}\t{duration_s}\t{self.buffer_size_bytes/1024}\t"
+              f"{MiB:.3f}\t{self.elapsed:.3f}\t{MiB/self.elapsed:.3f}")
 
 # sequential version of pipeline
 class pipeline_sequential(pipeline):
@@ -454,7 +457,7 @@ def main():
 
     my_pipeline.run(duration_s=args.duration)
 
-    my_pipeline.report_timing()
+    my_pipeline.report_timing(method=args.method, duration_s=args.duration)
 
 
 if __name__ == "__main__":
