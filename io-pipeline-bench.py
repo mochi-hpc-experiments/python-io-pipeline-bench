@@ -9,6 +9,7 @@ import asyncio
 import aiofiles
 import sys
 import multiprocessing
+import concurrent.futures
 
 # base class for pipeline
 class pipeline:
@@ -143,7 +144,10 @@ class pipeline_multiprocess(pipeline):
         # sync the write at the FS level
         os.fsync(file_ref.fileno())
 
-    def _per_buffer_loop(self, buffer_idx: int) -> int:
+
+    def _per_buffer_loop(self, buffer_idx: int, barrier):
+
+        result = {}
 
         # TODO: we may as well have used a context manager here since the
         # file reference lives in one function
@@ -152,7 +156,8 @@ class pipeline_multiprocess(pipeline):
         my_filename = self.output_file_base + f".{buffer_idx}"
         my_file_ref = open(my_filename, 'wb')
 
-        self._barrier.wait()
+        # synchronize after getting files opened
+        barrier.wait()
 
         # start timer (local)
         my_start_ts = time.perf_counter()
@@ -168,11 +173,14 @@ class pipeline_multiprocess(pipeline):
             # bookkeeping
             my_buffers_xferred += 1
 
+        result['elapsed'] = time.perf_counter() - my_start_ts
+        result['buffers_xferred'] = my_buffers_xferred;
+
         # close and unlink file
         my_file_ref.close()
-        os.unlink(my_filename)
+        # os.unlink(my_filename)
 
-        return(my_buffers_xferred)
+        return(result)
 
     def run(self, duration_s: int):
 
@@ -182,20 +190,31 @@ class pipeline_multiprocess(pipeline):
         self.duration_s = duration_s
 
         # launch concurrent pipelines
+        with multiprocessing.Manager() as manager:
 
-        # Note that in this version, each concurrent pipeline has to open
-        # and close its own file, because there is no way to share a file
-        # descriptor across multiple processes.  We use a barrier to make
-        # sure that the open cost is not counted in the pipeline time.
-        self._barrier = multiprocessing.Barrier(self.concurrency)
-        with multiprocessing.Pool(self.concurrency) as p:
-            results = p.map(self._per_buffer_loop, range(0, self.concurrency))
+            # Note that in this version, each concurrent pipeline has to open
+            # and close its own file, because there is no way to share a file
+            # descriptor across multiple processes.  We use a barrier to make
+            # sure that the open cost is not counted in the pipeline time.
+            barrier = manager.Barrier(self.concurrency)
+            futures = {}
+            with concurrent.futures.ProcessPoolExecutor(max_workers=self.concurrency) as executor:
+                for i in range(0, self.concurrency):
+                    future = executor.submit(self._per_buffer_loop,
+                                             buffer_idx=i,
+                                             barrier=barrier)
+                    futures[future] = i
 
-        # TODO: think about this: is this what we want for timing?
-        # don't count end time until we get back to this point
-        self.elapsed = time.perf_counter() - self.start_ts
-
-        self.buffers_xferred = sum(results)
+                # Iterate over futures as they complete, in the order of completion
+                for future in concurrent.futures.as_completed(futures):
+                    task_id = futures[future] # Get the original task_id from the future
+                    try:
+                        result = future.result()
+                        self.buffers_xferred += result['buffers_xferred']
+                        if(result['elapsed'] > self.elapsed):
+                            self.elapsed = result['elapsed']
+                    except Exception as exc:
+                        print(f"Task {task_id} generated an exception: {exc}")
 
 
 # asyncio version of pipeline
@@ -272,7 +291,8 @@ class pipeline_asyncio(pipeline):
         # run tasks concurrently; each will continue until time is elapsed
         results = await asyncio.gather(*tasks)
 
-        # TODO: think about this: is this what we want for timing?
+        # TODO: change this to look like the multiprocess example, where we
+        # collect time from each loop and save the maximum
         # don't count end time until we get back to this point
         self.elapsed = time.perf_counter() - self.start_ts
 
