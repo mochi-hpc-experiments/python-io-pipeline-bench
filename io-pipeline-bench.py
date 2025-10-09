@@ -149,35 +149,35 @@ class pipeline_multiprocess(pipeline):
 
         result = {}
 
-        # TODO: we may as well have used a context manager here since the
-        # file reference lives in one function
-
         my_buffers_xferred = 0;
         my_filename = self.output_file_base + f".{buffer_idx}"
-        my_file_ref = open(my_filename, 'wb')
 
-        # synchronize after getting files opened
-        barrier.wait()
+        # Note that we can use a context manager in this case since we have
+        # combined all of the file operations into a single function so that
+        # it is multiprocessing safe (file references cannot be exchanged
+        # across processes)
+        with open(my_filename, 'wb') as f:
 
-        # start timer (local)
-        my_start_ts = time.perf_counter()
+            # synchronize after getting files opened
+            barrier.wait()
 
-        while (time.perf_counter() - my_start_ts) < self.duration_s:
-            # recv data
-            self._recv()
-            # compute
-            self._compute(buffer_idx)
-            # write and flush
-            self._write(buffer_idx, my_file_ref)
+            # start timer (local)
+            my_start_ts = time.perf_counter()
 
-            # bookkeeping
-            my_buffers_xferred += 1
+            while (time.perf_counter() - my_start_ts) < self.duration_s:
+                # recv data
+                self._recv()
+                # compute
+                self._compute(buffer_idx)
+                # write and flush
+                self._write(buffer_idx, f)
 
-        result['elapsed'] = time.perf_counter() - my_start_ts
-        result['buffers_xferred'] = my_buffers_xferred;
+                # bookkeeping
+                my_buffers_xferred += 1
 
-        # close and unlink file
-        my_file_ref.close()
+                result['elapsed'] = time.perf_counter() - my_start_ts
+                result['buffers_xferred'] = my_buffers_xferred;
+
         os.unlink(my_filename)
 
         return(result)
