@@ -8,6 +8,9 @@ pipelining methods in Python.
 * create a python venv
 * `pip install -r requirements.txt`
 
+See notes at the end of this file for tips on installing a free-threaded Python
+interpreter if you would like to experiment with that.
+
 ## Notes on pipelining methods
 
 Each implementation is embarrassingly parallely; N copies of a pipeline work
