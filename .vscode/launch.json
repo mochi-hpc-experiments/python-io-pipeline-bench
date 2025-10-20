@@ -1,0 +1,141 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Sequential Pipeline (Baseline)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/io-pipeline-bench.py",
+            "args": [
+                "--method", "sequential",
+                "--duration", "10",
+                "--buffer-size", "256",
+                "--concurrency", "1",
+                "--recv-delay", "0.1",
+                "--output-file", "test_output"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "name": "Threading Pipeline (4 threads)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/io-pipeline-bench.py",
+            "args": [
+                "--method", "threading",
+                "--duration", "10",
+                "--buffer-size", "256",
+                "--concurrency", "4",
+                "--recv-delay", "0.1",
+                "--output-file", "test_output"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "name": "Multiprocess Pipeline (4 processes)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/io-pipeline-bench.py",
+            "args": [
+                "--method", "multiprocess",
+                "--duration", "10",
+                "--buffer-size", "256",
+                "--concurrency", "4",
+                "--recv-delay", "0.1",
+                "--output-file", "test_output"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "name": "Asyncio Pipeline (4 concurrent tasks)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/io-pipeline-bench.py",
+            "args": [
+                "--method", "asyncio",
+                "--duration", "10",
+                "--buffer-size", "256",
+                "--concurrency", "4",
+                "--recv-delay", "0.1",
+                "--output-file", "test_output"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "name": "High Concurrency Threading (8 threads)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/io-pipeline-bench.py",
+            "args": [
+                "--method", "threading",
+                "--duration", "15",
+                "--buffer-size", "256",
+                "--concurrency", "8",
+                "--recv-delay", "0.1",
+                "--output-file", "test_output"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "name": "High Concurrency Multiprocess (8 processes)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/io-pipeline-bench.py",
+            "args": [
+                "--method", "multiprocess",
+                "--duration", "15",
+                "--buffer-size", "256",
+                "--concurrency", "8",
+                "--recv-delay", "0.1",
+                "--output-file", "test_output"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "name": "Quick Test (5 seconds)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/io-pipeline-bench.py",
+            "args": [
+                "--method", "sequential",
+                "--duration", "5",
+                "--buffer-size", "256",
+                "--concurrency", "1",
+                "--recv-delay", "0.1",
+                "--output-file", "quick_test"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "name": "Large Buffer Test",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/io-pipeline-bench.py",
+            "args": [
+                "--method", "threading",
+                "--duration", "20",
+                "--buffer-size", "256",
+                "--concurrency", "2",
+                "--recv-delay", "0.1",
+                "--output-file", "large_buffer_test"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        }
+    ]
+}
