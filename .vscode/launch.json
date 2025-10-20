@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Sequential Pipeline (Baseline)",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/io-pipeline-bench.py",
             "args": [
@@ -20,7 +20,7 @@
         },
         {
             "name": "Threading Pipeline (4 threads)",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/io-pipeline-bench.py",
             "args": [
@@ -37,7 +37,7 @@
         },
         {
             "name": "Multiprocess Pipeline (4 processes)",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/io-pipeline-bench.py",
             "args": [
@@ -54,7 +54,7 @@
         },
         {
             "name": "Asyncio Pipeline (4 concurrent tasks)",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/io-pipeline-bench.py",
             "args": [
@@ -71,7 +71,7 @@
         },
         {
             "name": "High Concurrency Threading (8 threads)",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/io-pipeline-bench.py",
             "args": [
@@ -88,7 +88,7 @@
         },
         {
             "name": "High Concurrency Multiprocess (8 processes)",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/io-pipeline-bench.py",
             "args": [
@@ -105,7 +105,7 @@
         },
         {
             "name": "Quick Test (5 seconds)",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/io-pipeline-bench.py",
             "args": [
@@ -122,7 +122,7 @@
         },
         {
             "name": "Large Buffer Test",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/io-pipeline-bench.py",
             "args": [
