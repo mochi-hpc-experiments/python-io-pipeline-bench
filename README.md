@@ -11,6 +11,12 @@ pipelining methods in Python.
 See notes at the end of this file for tips on installing a free-threaded Python
 interpreter if you would like to experiment with that.
 
+## Running the benchmark
+
+You can run a set of benchmarks sweeping across a range of concurrencies by running `./run-all-basic.sh`.  It takes a single (optional) command line argument to specify the Python venv to use.  If no command line argument is given, then it assumes `./.venv`.  The results will be written to a file called `results.<pid>.dat`.
+
+The underlying benchmark code is in `io-pipeline-bench.py`.  You can look at `run-all-basic.sh` to see examples of how to invoke it in different configurations.
+
 ## Notes on pipelining methods
 
 Each implementation is embarrassingly parallely; N copies of a pipeline work
@@ -64,3 +70,4 @@ make install
 ```
 * You can then use the python3 binary installed in this path to create a
   venv.
+* You can toggle the GIL at runtime by setting the environment variable `PYTHON_GIL=1` or `PYTHON_GIL=0`
