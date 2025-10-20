@@ -20,8 +20,11 @@ COMPUTE_SPARSITY = 8
 
 # base class for pipeline
 class pipeline:
+    """Base class for I/O pipeline implementations with configurable concurrency."""
+    
     def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
                  float, output_file_base: str):
+        """Initialize pipeline with buffer size, concurrency level, receive delay, and output file base name."""
         self.buffer_size_bytes = buffer_size_bytes
         self.concurrency = concurrency
         self.buffers_xferred = 0
@@ -38,6 +41,7 @@ class pipeline:
                                     bytes(self.buffer_size_bytes)))
 
     def _compute(self, buffer_idx: int) -> float:
+        """Fill buffer with random data and return computation time."""
         start_ts = time.perf_counter()
         # fill the specified buffer with random data, byte by byte
         for i in range(0, self.buffer_size_bytes, COMPUTE_SPARSITY):
@@ -46,11 +50,13 @@ class pipeline:
         return(time.perf_counter() - start_ts)
 
     def _recv(self):
+        """Simulate data reception delay by sleeping for configured time."""
         # don't do anything except wait for configurable time to mimic a
         # delay in receiving data
         time.sleep(self.recv_delay)
 
     def _write(self, buffer_idx: int, file_ref):
+        """Write buffer to file with flush and fsync for durability."""
         # write
         file_ref.write(self.buffer_list[buffer_idx].tobytes())
         # flush Python buffer
@@ -59,9 +65,11 @@ class pipeline:
         os.fsync(file_ref.fileno())
 
     def run(self, duration_s: int):
+        """Run the pipeline for specified duration. Override in subclasses."""
         pass
 
     def report_timing(self, method:str, duration_s:int):
+        """Print performance metrics in tabular format."""
 
         if hasattr(sys, '_is_gil_enabled'):
             is_gil_currently_enabled = sys._is_gil_enabled()
@@ -80,8 +88,11 @@ class pipeline:
 
 # sequential version of pipeline
 class pipeline_sequential(pipeline):
+    """Sequential pipeline implementation that processes one buffer at a time."""
+    
     def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
                  float, output_file_base: str):
+        """Initialize sequential pipeline. Concurrency must be 1."""
 
         if concurrency != 1:
             raise ValueError(f"Invalid 'concurrency' value for pipeline_sequential. Expected 1, but got {concurrency}.")
@@ -91,7 +102,7 @@ class pipeline_sequential(pipeline):
                          output_file_base=output_file_base)
 
     def run(self, duration_s: int):
-
+        """Execute sequential pipeline: recv -> compute -> write in a single loop."""
         my_filename = self.output_file_base + f"0"
         with open(my_filename, 'wb') as f:
 
@@ -115,15 +126,18 @@ class pipeline_sequential(pipeline):
 
 # threading version of pipeline
 class pipeline_threading(pipeline):
+    """Threading-based pipeline implementation using ThreadPoolExecutor."""
+    
     def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
                  float, output_file_base: str):
+        """Initialize threading pipeline with specified parameters."""
 
         super().__init__(buffer_size_bytes=buffer_size_bytes,
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
 
     def _per_buffer_loop(self, buffer_idx: int, duration_s: int, barrier):
-
+        """Execute pipeline loop for a single buffer in a separate thread."""
         result = {}
 
         my_buffers_xferred = 0;
@@ -161,7 +175,7 @@ class pipeline_threading(pipeline):
         return(result)
 
     def run(self, duration_s: int):
-
+        """Execute concurrent pipeline using ThreadPoolExecutor."""
         # launch concurrent pipelines
 
         # Note that each function opens and closes its own files, following
@@ -193,15 +207,18 @@ class pipeline_threading(pipeline):
 
 # multiprocess version of pipeline
 class pipeline_multiprocess(pipeline):
+    """Multiprocess-based pipeline implementation using ProcessPoolExecutor."""
+    
     def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
                  float, output_file_base: str):
+        """Initialize multiprocess pipeline with specified parameters."""
 
         super().__init__(buffer_size_bytes=buffer_size_bytes,
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
 
     def _per_buffer_loop(self, buffer_idx: int, duration_s: int, barrier):
-
+        """Execute pipeline loop for a single buffer in a separate process."""
         result = {}
 
         my_buffers_xferred = 0
@@ -239,7 +256,7 @@ class pipeline_multiprocess(pipeline):
         return(result)
 
     def run(self, duration_s: int):
-
+        """Execute concurrent pipeline using ProcessPoolExecutor with multiprocessing Manager."""
         # launch concurrent pipelines
         with multiprocessing.Manager() as manager:
 
@@ -272,20 +289,25 @@ class pipeline_multiprocess(pipeline):
 
 # asyncio version of pipeline
 class pipeline_asyncio(pipeline):
+    """Asyncio-based pipeline implementation using async/await and aiofiles."""
+    
     def __init__(self, buffer_size_bytes: int, concurrency: int, recv_delay:
                  float, output_file_base: str):
+        """Initialize asyncio pipeline with specified parameters."""
 
         super().__init__(buffer_size_bytes=buffer_size_bytes,
                          concurrency=concurrency, recv_delay=recv_delay,
                          output_file_base=output_file_base)
 
     async def _openfiles(self, filename: str):
+        """Open all output files asynchronously using aiofiles."""
         # open files
         for i in range(0, self.concurrency):
             filename = self.output_file_base + f".{i}"
             self.file_ref_list.append(await aiofiles.open(filename, 'wb'))
 
     async def _close_files(self):
+        """Close all files and unlink them."""
         # close and unlink files
         for i in range(0, self.concurrency):
             await self.file_ref_list[i].close()
@@ -293,6 +315,7 @@ class pipeline_asyncio(pipeline):
             os.unlink(filename)
 
     async def _recv(self):
+        """Async version of recv that uses asyncio.sleep for non-blocking delay."""
         # note that we override this function for asyncio so that we can use
         # an async-aware sleep function
 
@@ -301,6 +324,7 @@ class pipeline_asyncio(pipeline):
         await asyncio.sleep(self.recv_delay)
 
     async def _write(self, buffer_idx: int, file_ref):
+        """Async version of write with flush and fsync using aiofiles and asyncio.to_thread."""
         buffer_bytes = self.buffer_list[buffer_idx].tobytes()
         # write
         await file_ref.write(buffer_bytes)
@@ -312,7 +336,7 @@ class pipeline_asyncio(pipeline):
         await asyncio.to_thread(os.fsync, file_ref.fileno())
 
     async def _per_buffer_loop(self, buffer_idx: int, duration_s: int) -> int:
-
+        """Execute async pipeline loop for a single buffer."""
         my_cumul_compute_time = 0
         my_buffers_xferred = 0
         result = {}
@@ -335,7 +359,7 @@ class pipeline_asyncio(pipeline):
         return(result)
 
     async def _concurrent_run(self, duration_s: int):
-
+        """Execute concurrent async pipeline using asyncio.gather for task coordination."""
         await self._openfiles(self.output_file_base)
 
         # create an array of N tasks for desired concurrency; each will
@@ -360,7 +384,7 @@ class pipeline_asyncio(pipeline):
         await self._close_files()
 
     def run(self, duration_s: int):
-
+        """Run async pipeline by executing asyncio.run on the concurrent implementation."""
         # this function is really just a wrapper around _concurrent loop so
         # that we can launch it and await it's completion from a non-async
         # function
@@ -368,6 +392,7 @@ class pipeline_asyncio(pipeline):
 
 
 def main():
+    """Parse command line arguments and execute the specified pipeline benchmark."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--method', type=str, required=True,
                         help='What pipeline method to use.')
