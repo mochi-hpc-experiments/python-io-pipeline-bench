@@ -19,4 +19,4 @@ The data files here reflect running the benchmark both with and without the GIL 
 
 # Discussion
 
-The *multiprocess* method is consistently the fastest in all tests.  Counterintuitively, the *threading* model performance declines when the GIL is disabled.  The expectation was that it would approach the performance of the *multiprocess* method when the GIL was disabled.  This requires some investigation.
+The *multiprocess* method is consistently the fastest in all tests.  Counterintuitively, the *threading* model performance declines when the GIL is disabled.  The expectation was that it would approach the performance of the *multiprocess* method when the GIL was disabled.  It actually performs worse with 8x concurrency than with 4x concurrency.  This requires some investigation.

@@ -3,6 +3,8 @@
 This is a simple benchmark to measure the throughput of various I/O
 pipelining methods in Python.
 
+See [example results from a run on a standard laptop](example-results/thinkpad-laptop-2025-10-20/README.md) if you want to skip to results.
+
 ## What does the benchmark do?
 
 The core idea of the benchmark is to run N simultaneous concurrent data transfer
