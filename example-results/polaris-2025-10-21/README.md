@@ -12,4 +12,4 @@ The data files here reflect running the benchmark both with and without the GIL 
 
 # Discussion
 
-The threading version performs considerably better in the configuration with the GIL disabled, but it still does note remotely approach the performance of the multiprocess version.
+The threading performance collapses with the GIL disabled once we get past a concurrency of 8 for some reason.  Need to investigate why.
