@@ -1,0 +1,44 @@
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	sequential	1	15	256	0.100	33.750	23.445	15.043	2.244
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	asyncio	1	15	256	0.100	33.500	23.091	15.038	2.228
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	multiprocess	1	15	256	0.100	33.250	20.778	15.002	2.216
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	threading	1	15	256	0.100	33.750	23.737	15.019	2.247
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	asyncio	2	15	256	0.100	61.000	22.629	15.056	4.052
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	multiprocess	2	15	256	0.100	67.000	20.997	15.100	4.437
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	threading	2	15	256	0.100	61.500	13.323	15.029	4.092
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	asyncio	4	15	256	0.100	104.000	23.146	15.074	6.899
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	multiprocess	4	15	256	0.100	134.000	21.130	15.079	8.887
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	threading	4	15	256	0.100	114.500	13.243	15.079	7.593
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	asyncio	8	15	256	0.100	160.000	23.328	15.081	10.610
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	multiprocess	8	15	256	0.100	266.750	20.470	15.112	17.652
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	threading	8	15	256	0.100	219.250	13.474	15.100	14.520
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	asyncio	16	15	256	0.100	220.000	23.017	15.274	14.403
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	multiprocess	16	15	256	0.100	532.000	20.722	15.027	35.403
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	threading	16	15	256	0.100	320.750	7.250	15.107	21.231
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	asyncio	32	15	256	0.100	272.000	23.251	15.317	17.758
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	multiprocess	32	15	256	0.100	1038.250	16.461	15.111	68.710
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	threading	32	15	256	0.100	354.250	3.129	15.123	23.424
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	asyncio	64	15	256	0.100	304.000	23.306	15.148	20.069
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	multiprocess	64	15	256	0.100	2061.500	15.430	15.117	136.368
+#<Python version>	<GIL enabled>	<method>	<concurrency>	<duration>	<KiB buffer_size>	<recv delay>	<MiB xferred>	<sequential compute throughput (MiB/s)>	<seconds>	<aggregate overall throughput (MiB/s)>
+3.14	True	threading	64	15	256	0.100	360.000	1.468	15.316	23.504
