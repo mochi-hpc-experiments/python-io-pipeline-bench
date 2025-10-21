@@ -3,6 +3,35 @@
 This is a simple benchmark to measure the throughput of various I/O
 pipelining methods in Python.
 
+## What does the benchmark do?
+
+The core idea of the benchmark is to run N simultaneous concurrent data transfer
+pipelines. The pipelines are meant to be embarrassingly parallel; each pipeline
+works to relay data from a recv function, to a compute function, to a write
+function. They all proceed simultaneously until a specified amount of time has
+elapsed.
+
+![Pipeline Diagram](doc/pipeline.pdf)
+
+Each data transfer pipeline repeatedly operates on a single fixed-size buffer.  The specified level of concurrency therefore dictates both the number of simultaneous pipelines to execute and the number of memory buffers to use.  
+
+The data transfer steps are defined as follows:
+* *recv*: this is meant to emulate receiving data into the buffer.  Rather than actually receiving data, however, it delays for a specified amount of time to emulate waiting on new data to arrive.
+* *compute*: this is meant to emulate performing some computation on the data buffer.  In this benchmark, this is done be generating random numbers in the buffer.  There is a constant defined at the top of the benchmark called `COMPUTE_SPARSITY` which indicates the stride pattern of bytes to fill in with random numbers.  A value of 1 there for means more intense computation than a value of 8, for example.
+* *write*: this appends the buffer to a local file.  The data is written, the Python buffer is flushed, and the file is sync'ed to disk.
+
+Note that each pipeline writes to a separate file.  This is done intentionally to minimize file system overhead in order to better isolate Python's ability to perform concurrent pipeline transfers.
+
+The benchmark supports multiple methods for pipeline concurrency, as defined in [Notes on concurrent pipelining methods](#notes-on-concurrent-pipelining-methods). 
+
+Command line parameters:
+* `--method` (required): What pipeline method to use (sequential, asyncio, multiprocess, threading)
+* `--duration` (required): How many seconds to execute the benchmark
+* `--buffer-size` (required): Size of each transfer buffer in KiB
+* `--concurrency` (required): Level of concurrency (number of parallel pipelines)
+* `--recv-delay` (required): Seconds to sleep per emulated recv operation
+* `--output-file` (required): Base name of output file (each pipeline writes to a separate file)
+
 ## Installation
 
 * create a python venv
@@ -17,12 +46,7 @@ You can run a set of benchmarks sweeping across a range of concurrencies by runn
 
 The underlying benchmark code is in `io-pipeline-bench.py`.  You can look at `run-all-basic.sh` to see examples of how to invoke it in different configurations.
 
-## Notes on pipelining methods
-
-Each implementation is embarrassingly parallely; N copies of a pipeline work
-to relay data from a mock recv function, to a mock compute function, to a
-write function that stores the files on disk.  Each pipeline writes to a
-separate file to prevent file contention from skewing the results.
+## Notes on concurrent pipelining methods
 
 ### Sequential
 
@@ -53,6 +77,11 @@ to execute concurrent pipelines.  This introduces a few caveats:
   in a multiprocessing manager.
 * Generally speaking, you have to be thoughtful about how to exchange state
   across processes.
+
+### Threading
+
+This method is similar to Multiprocess, except that it uses a ThreadPoolExecutor to run the pipelines in threads rather than separate processes.
+* This is expected to perform poorly (due to inability to truly execute computational steps in parallel) unless you are using a "free threaded" Python interpreter, that has been built to disable the GIL (Global Interpreter Lock).
 
 ## Installing a non-GIL (free-threaded) Python interpretter
 
