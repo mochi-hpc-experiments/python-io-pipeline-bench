@@ -16,9 +16,10 @@ elapsed.
 Each data transfer pipeline repeatedly operates on a single fixed-size buffer.  The specified level of concurrency therefore dictates both the number of simultaneous pipelines to execute and the number of memory buffers to use.  
 
 The data transfer steps are defined as follows:
-* *recv*: this is meant to emulate receiving data into the buffer.  Rather than actually receiving data, however, it delays for a specified amount of time to emulate waiting on new data to arrive.
-* *compute*: this is meant to emulate performing some computation on the data buffer.  In this benchmark, this is done be generating random numbers in the buffer.  There is a constant defined at the top of the benchmark called `COMPUTE_SPARSITY` which indicates the stride pattern of bytes to fill in with random numbers.  A value of 1 there for means more intense computation than a value of 8, for example.
+* *recv*: this is meant to emulate receiving data into the buffer.  Rather than actually receiving data, however, it delays for a specified amount of time to emulate waiting on new data to arrive.  This should be easy for any concurrency method to parallelize.
+* *compute*: this is meant to emulate performing some computation on the data buffer.  In this benchmark, this is done be generating random numbers in the buffer.  There is a constant defined at the top of the benchmark called `COMPUTE_SPARSITY` which indicates the stride pattern of bytes to fill in with random numbers.  A value of 1 there for means more intense computation than a value of 8, for example.  This step cannot be parallelized unless the concurrency method offers true concurrent execution.
 * *write*: this appends the buffer to a local file.  The data is written, the Python buffer is flushed, and the file is sync'ed to disk.
+  The degree to which this can be parallelized depends on how well the concurrency method handls I/O operations.
 
 Note that each pipeline writes to a separate file.  This is done intentionally to minimize file system overhead in order to better isolate Python's ability to perform concurrent pipeline transfers.
 
