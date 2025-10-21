@@ -11,7 +11,7 @@ works to relay data from a recv function, to a compute function, to a write
 function. They all proceed simultaneously until a specified amount of time has
 elapsed.
 
-![Pipeline Diagram](doc/pipeline.pdf)
+![Pipeline Diagram](doc/pipeline.png)
 
 Each data transfer pipeline repeatedly operates on a single fixed-size buffer.  The specified level of concurrency therefore dictates both the number of simultaneous pipelines to execute and the number of memory buffers to use.  
 
