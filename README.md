@@ -3,7 +3,7 @@
 This is a simple benchmark to measure the throughput of various I/O
 pipelining methods in Python.
 
-See [example results from a run on a standard laptop](example-results/thinkpad-laptop-2025-10-20/README.md) if you want to skip to results.
+See example results from [Polaris](example-results/polaris-2025-10-21/README.md) or a [standard laptop](example-results/thinkpad-laptop-2025-10-20/README.md) if you want to skip to results.
 
 ## What does the benchmark do?
 
@@ -15,7 +15,7 @@ elapsed.
 
 ![Pipeline Diagram](doc/pipeline.png)
 
-Each data transfer pipeline repeatedly operates on a single fixed-size buffer.  The specified level of concurrency therefore dictates both the number of simultaneous pipelines to execute and the number of memory buffers to use.  
+Each data transfer pipeline repeatedly operates on a single fixed-size buffer.  The specified level of concurrency therefore dictates both the number of simultaneous: pipelines to execute and the number of memory buffers to use.  
 
 The data transfer steps are defined as follows:
 * *recv*: this is meant to emulate receiving data into the buffer.  Rather than actually receiving data, however, it delays for a specified amount of time to emulate waiting on new data to arrive.  This should be easy for any concurrency method to parallelize.
@@ -46,6 +46,8 @@ interpreter if you would like to experiment with that.
 ## Running the benchmark
 
 You can run a set of benchmarks sweeping across a range of concurrencies by running `./run-all-basic.sh`.  It takes a single (optional) command line argument to specify the Python venv to use.  If no command line argument is given, then it assumes `./.venv`.  The results will be written to a file called `results.<pid>.dat`.
+
+The results can be plotted using the `io-pipeline-bench-plotter.py` script.
 
 The underlying benchmark code is in `io-pipeline-bench.py`.  You can look at `run-all-basic.sh` to see examples of how to invoke it in different configurations.
 
