@@ -100,3 +100,7 @@ make install
 * You can then use the python3 binary installed in this path to create a
   venv.
 * You can toggle the GIL at runtime by setting the environment variable `PYTHON_GIL=1` or `PYTHON_GIL=0`
+
+## Example results
+
+Example results from different systems and environments can be found in the `example-results` subdirectory in this repository.
